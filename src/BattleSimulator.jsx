@@ -2729,6 +2729,15 @@ const BattleSimulator = () => {
                     />
                   </label>
 
+                  {/* Load @HoloisAlpha followers - primary action */}
+                  <button
+                    onClick={() => loadFromUrl('/followers.json')}
+                    disabled={isLoadingUrl}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 rounded px-4 py-3 font-semibold flex items-center justify-center gap-2 mb-2"
+                  >
+                    {isLoadingUrl ? '⏳ Loading...' : '🚀 @HoloisAlpha (2,568 followers)'}
+                  </button>
+
                   {/* Paste JSON button - great for mobile */}
                   <button
                     onClick={() => setShowPasteModal(true)}
