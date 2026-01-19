@@ -1766,19 +1766,19 @@ const BattleSimulator = () => {
       const pctRemaining = count / total;
 
       // Final stages - fixed speeds
-      if (count <= 2) return 1.4;
-      if (count <= 5) return 1.2;
-      if (count <= 10) return 1.0;
-      if (count <= 20) return 0.9;
+      if (count <= 2) return 1.2;
+      if (count <= 5) return 1.0;
+      if (count <= 10) return 0.85;
+      if (count <= 20) return 0.7;
 
-      // Faster speeds throughout - more exciting gameplay
-      if (pctRemaining > 0.9) return 0.7;       // Start: energetic
-      if (pctRemaining > 0.8) return 0.7;       // 80-90%: same
-      if (pctRemaining > 0.6) return 0.75;      // 60-80%: slightly faster
-      if (pctRemaining > 0.4) return 0.8;       // 40-60%: building
-      if (pctRemaining > 0.2) return 0.85;      // 20-40%: getting intense
-      if (pctRemaining > 0.1) return 0.9;       // 10-20%
-      return 0.95;                               // Under 10% (but above 20 players)
+      // Scale based on percentage - keep it consistent, don't speed up in middle
+      if (pctRemaining > 0.9) return 0.3;       // Start: very calm
+      if (pctRemaining > 0.8) return 0.3;       // 80-90%: same
+      if (pctRemaining > 0.6) return 0.32;      // 60-80%: barely faster
+      if (pctRemaining > 0.4) return 0.32;      // 40-60%: same
+      if (pctRemaining > 0.2) return 0.35;      // 20-40%: slight increase
+      if (pctRemaining > 0.1) return 0.4;       // 10-20%
+      return 0.5;                                // Under 10% (but above 20 players)
     };
     
     const gameSpeed = getGameSpeed(aliveCount, participantsRef.current.length);
@@ -1883,15 +1883,11 @@ const BattleSimulator = () => {
     });
 
     // Collision detection and combat using spatial grid
-    // Skip frames aggressively at high counts for smooth animation (more aggressive on mobile)
+    // Skip frames aggressively at high counts for smooth animation
     frameCountRef.current++;
-    const isMobileDevice = window.innerWidth < 768;
-    const skipCollisions = isMobileDevice
-      ? (aliveCount > 500 ? (frameCountRef.current % 3 !== 0) :
-         aliveCount > 200 ? (frameCountRef.current % 2 !== 0) : false)
-      : (aliveCount > 2000 ? (frameCountRef.current % 3 !== 0) :
-         aliveCount > 1500 ? (frameCountRef.current % 2 !== 0) :
-         aliveCount > 1000 ? (frameCountRef.current % 2 !== 0) : false);
+    const skipCollisions = aliveCount > 2000 ? (frameCountRef.current % 3 !== 0) :
+                           aliveCount > 1500 ? (frameCountRef.current % 2 !== 0) :
+                           aliveCount > 1000 ? (frameCountRef.current % 2 !== 0) : false;
     
     if (!skipCollisions) {
       const cellSize = Math.max(size * 4, 8);
@@ -2225,24 +2221,32 @@ const BattleSimulator = () => {
     } // end skipCollisions check
 
     // Draw participants - use pre-rendered circular canvases
-    // Performance optimizations - skip health bars at high counts, but ALWAYS show PFPs
-    const isMobile = window.innerWidth < 768;
+    // Always use color now - performance comes from pre-rendered canvases
     const useGrayscale = false;
-    const skipHealthBars = isMobile ? aliveCount > 50 : aliveCount > 200;
-    
+    const skipHealthBars = aliveCount > 500;
+    const skipBorders = aliveCount > 1000;
+
     alive.forEach(p => {
-      // Always draw pre-rendered profile picture - PFPs are the whole point!
+      // Try to draw pre-rendered profile picture
       const imgData = p.username ? loadedImagesRef.current[p.username] : null;
       if (imgData && imgData.complete) {
         // Use pre-rendered circular canvas (no clipping needed!)
         const canvas = useGrayscale ? imgData.gray : imgData.color;
         ctx.drawImage(canvas, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+        // No border - cleaner look
       } else {
-        // Colored circle fallback only if no image
+        // Colored circle fallback
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
+        ctx.fillStyle = useGrayscale ? '#666' : p.color;
         ctx.fill();
+
+        if (aliveCount <= 500) {
+          ctx.font = `${p.size * 1.2}px Arial`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(p.emoji, p.x, p.y);
+        }
       }
 
       // Health bar - skip at high counts for performance
