@@ -49,6 +49,11 @@ const BattleSimulator = () => {
   const isRecordingRef = useRef(false);
   const [videoBlob, setVideoBlob] = useState(null);
 
+  // Mobile-friendly input options
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+
   // Canvas dimensions with frame
   const FRAME_WIDTH = 1080;
   const FRAME_HEIGHT = 1080;
@@ -379,6 +384,87 @@ const BattleSimulator = () => {
       alert('Failed to load file: ' + err.message);
     }
   };
+
+  // Handle pasted JSON text
+  const handlePasteSubmit = async () => {
+    if (!pasteText.trim()) {
+      alert('Please paste JSON data first');
+      return;
+    }
+    try {
+      const data = JSON.parse(pasteText);
+      if (!data.followers || !Array.isArray(data.followers)) {
+        throw new Error('Invalid format: missing followers array');
+      }
+      await saveFollowerData(data);
+      await processFollowerData(data);
+      setShowPasteModal(false);
+      setPasteText('');
+    } catch (err) {
+      alert('Invalid JSON: ' + err.message);
+    }
+  };
+
+  // Load from URL (supports ?data=URL parameter)
+  const loadFromUrl = async (url) => {
+    setIsLoadingUrl(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      if (!data.followers || !Array.isArray(data.followers)) {
+        throw new Error('Invalid format: missing followers array');
+      }
+      await saveFollowerData(data);
+      await processFollowerData(data);
+    } catch (err) {
+      console.error('Failed to load from URL:', err);
+      alert('Failed to load from URL: ' + err.message);
+    } finally {
+      setIsLoadingUrl(false);
+    }
+  };
+
+  // Generate demo battle data
+  const generateDemoData = async () => {
+    const demoNames = [
+      'cryptowhale', 'moonshot_mike', 'degen_queen', 'nft_collector', 'eth_maxi',
+      'btc_believer', 'sol_soldier', 'ape_holder', 'punk_owner', 'bayc_gang',
+      'defi_degen', 'yield_farmer', 'liquidity_hunter', 'gas_optimizer', 'mev_searcher',
+      'alpha_caller', 'ct_influencer', 'thread_guy', 'ratio_king', 'quote_tweet',
+      'gm_poster', 'wagmi_warrior', 'ngmi_avoider', 'fud_fighter', 'hopium_dealer',
+      'diamond_hands', 'paper_hands', 'whale_watcher', 'rug_detector', 'scam_hunter',
+      'airdrop_farmer', 'testnet_grinder', 'bridge_user', 'chain_hopper', 'l2_maxi',
+      'rollup_fan', 'zk_believer', 'privacy_chad', 'anon_trader', 'doxxed_dev',
+      'community_mod', 'discord_admin', 'telegram_og', 'signal_group', 'alpha_chat',
+      'nft_flipper', 'art_collector', 'pfp_enjoyer', 'metaverse_explorer', 'land_owner'
+    ];
+
+    const followers = demoNames.map((name, i) => ({
+      username: name,
+      displayName: name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      pfpUrl: null,
+      pfpBase64: null
+    }));
+
+    const demoData = {
+      account: 'demo_battle',
+      totalFollowers: followers.length,
+      followers: followers
+    };
+
+    await processFollowerData(demoData);
+    console.log('🎮 Demo battle loaded with', followers.length, 'participants');
+  };
+
+  // Check for URL parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataUrl = params.get('data');
+    if (dataUrl) {
+      loadFromUrl(dataUrl);
+    }
+  }, []);
 
   // Handle audio file upload
   useEffect(() => {
@@ -2622,12 +2708,14 @@ const BattleSimulator = () => {
                 {/* Follower Data Upload */}
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">
-                    {followerData 
+                    {followerData
                       ? `✅ ${followerData.followers.length} followers (@${followerData.account})`
                       : 'Load Follower Data'
                     }
                   </label>
-                  <label className="w-full bg-purple-600 hover:bg-purple-700 rounded px-4 py-3 font-semibold flex items-center justify-center gap-2 cursor-pointer">
+
+                  {/* Upload file button */}
+                  <label className="w-full bg-purple-600 hover:bg-purple-700 rounded px-4 py-3 font-semibold flex items-center justify-center gap-2 cursor-pointer mb-2">
                     <Upload size={20} />
                     {followerData ? 'Load Different File' : 'Upload JSON'}
                     <input
@@ -2635,11 +2723,33 @@ const BattleSimulator = () => {
                       accept=".json"
                       onChange={(e) => {
                         handleFileUpload(e);
-                        e.target.value = ''; // Reset so same file can be selected again
+                        e.target.value = '';
                       }}
                       className="hidden"
                     />
                   </label>
+
+                  {/* Paste JSON button - great for mobile */}
+                  <button
+                    onClick={() => setShowPasteModal(true)}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 rounded px-4 py-3 font-semibold flex items-center justify-center gap-2 mb-2"
+                  >
+                    📋 Paste JSON
+                  </button>
+
+                  {/* Demo battle button */}
+                  <button
+                    onClick={generateDemoData}
+                    className="w-full bg-gray-700 hover:bg-gray-600 rounded px-4 py-3 font-semibold flex items-center justify-center gap-2"
+                  >
+                    🎮 Demo Battle (50 players)
+                  </button>
+
+                  {isLoadingUrl && (
+                    <p className="text-xs text-yellow-400 mt-2">
+                      ⏳ Loading from URL...
+                    </p>
+                  )}
                   {Object.keys(loadedImages).length > 0 && (
                     <p className="text-xs text-green-400 mt-2">
                       🖼️ {Object.keys(loadedImages).length} profile pics loaded
@@ -2880,6 +2990,38 @@ const BattleSimulator = () => {
           </div>
         </div>
       </div>
+
+      {/* Paste JSON Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <h3 className="text-xl font-bold mb-4">Paste Follower JSON</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Paste your follower data JSON below. Format should include a "followers" array.
+            </p>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder='{"account": "username", "followers": [{"username": "user1", ...}]}'
+              className="w-full h-48 bg-gray-900 border border-gray-700 rounded p-3 text-sm font-mono text-white resize-none focus:outline-none focus:border-purple-500"
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handlePasteSubmit}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 rounded px-4 py-3 font-semibold"
+              >
+                Load Data
+              </button>
+              <button
+                onClick={() => { setShowPasteModal(false); setPasteText(''); }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 rounded px-4 py-3 font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
