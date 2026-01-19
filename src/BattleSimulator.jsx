@@ -2225,40 +2225,24 @@ const BattleSimulator = () => {
     } // end skipCollisions check
 
     // Draw participants - use pre-rendered circular canvases
-    // Performance optimizations - more aggressive for mobile
+    // Performance optimizations - skip health bars at high counts, but ALWAYS show PFPs
     const isMobile = window.innerWidth < 768;
     const useGrayscale = false;
-    const skipHealthBars = isMobile ? aliveCount > 100 : aliveCount > 200;
-    const skipPfps = isMobile ? aliveCount > 500 : aliveCount > 1500; // Simple circles on mobile
+    const skipHealthBars = isMobile ? aliveCount > 50 : aliveCount > 200;
     
     alive.forEach(p => {
-      // At very high counts, use simple colored circles for performance
-      if (skipPfps) {
+      // Always draw pre-rendered profile picture - PFPs are the whole point!
+      const imgData = p.username ? loadedImagesRef.current[p.username] : null;
+      if (imgData && imgData.complete) {
+        // Use pre-rendered circular canvas (no clipping needed!)
+        const canvas = useGrayscale ? imgData.gray : imgData.color;
+        ctx.drawImage(canvas, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+      } else {
+        // Colored circle fallback only if no image
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.fill();
-      } else {
-        // Try to draw pre-rendered profile picture
-        const imgData = p.username ? loadedImagesRef.current[p.username] : null;
-        if (imgData && imgData.complete) {
-          // Use pre-rendered circular canvas (no clipping needed!)
-          const canvas = useGrayscale ? imgData.gray : imgData.color;
-          ctx.drawImage(canvas, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
-        } else {
-          // Colored circle fallback
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = useGrayscale ? '#666' : p.color;
-          ctx.fill();
-
-          if (aliveCount <= 500) {
-            ctx.font = `${p.size * 1.2}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(p.emoji, p.x, p.y);
-          }
-        }
       }
 
       // Health bar - skip at high counts for performance
