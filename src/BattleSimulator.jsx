@@ -2696,7 +2696,7 @@ const BattleSimulator = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Until One Remains</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center">PFP WAR</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Controls */}
