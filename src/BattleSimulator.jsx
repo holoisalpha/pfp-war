@@ -2930,60 +2930,85 @@ const BattleSimulator = () => {
                 </div>
               ) : (
               <div className="relative" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                {/* Canvas - tap to start/pause */}
                 <canvas
                   ref={canvasRef}
                   width={FRAME_WIDTH}
                   height={FRAME_HEIGHT}
-                  className="w-full rounded"
+                  className="w-full rounded cursor-pointer"
+                  onClick={() => {
+                    // If winner exists, do nothing (game is over)
+                    if (winner) return;
+                    // If not started yet, start the battle
+                    if (!isRunning && playersLeft === (followerData?.followers.length || participantsRef.current.length)) {
+                      startBattle();
+                    } else {
+                      // Toggle pause
+                      togglePause();
+                    }
+                  }}
                 />
-                
-                {/* Invisible hover zone at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-16 group">
-                  {/* Control bar - appears on hover */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-b">
-                    <div className="flex items-center justify-center gap-4">
-                      <button
-                        onClick={reset}
-                        className="text-white hover:text-yellow-400 transition-colors p-2"
-                        title="Reset"
-                      >
-                        <RotateCcw size={24} />
-                      </button>
-                      
-                      <button
-                        onClick={togglePause}
-                        disabled={!isRunning && !winner && playersLeft === (followerData?.followers.length || 0)}
-                        className="text-white hover:text-yellow-400 transition-colors p-2 disabled:opacity-30"
-                        title={isRunning ? 'Pause' : 'Play'}
-                      >
-                        {isRunning ? <Pause size={28} /> : <Play size={28} />}
-                      </button>
-                      
-                      <button
-                        onClick={startBattle}
-                        disabled={isRunning}
-                        className="text-white hover:text-green-400 transition-colors p-2 disabled:opacity-30"
-                        title="New Battle"
-                      >
-                        <Play size={24} className="ml-1" />
-                        <span className="text-xs">NEW</span>
-                      </button>
+
+                {/* Tap to Start overlay - shown before game starts */}
+                {!isRunning && !winner && playersLeft === (followerData?.followers.length || participantsRef.current.length) && participantsRef.current.length > 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded pointer-events-none">
+                    <div className="text-center">
+                      <div className="text-6xl mb-4">⚔️</div>
+                      <p className="text-2xl font-bold text-white">Tap to Start</p>
+                      <p className="text-gray-300 mt-2">{playersLeft} players ready</p>
                     </div>
-                    
-                    {/* Progress bar showing players remaining */}
-                    <div className="mt-2 w-full bg-gray-700 rounded-full h-1.5">
-                      <div 
-                        className="bg-red-500 h-1.5 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${((followerData?.followers.length || playersLeft) - playersLeft) / (followerData?.followers.length || 1) * 100}%` 
+                  </div>
+                )}
+
+                {/* Paused overlay - shown when game is paused mid-battle */}
+                {!isRunning && !winner && playersLeft > 0 && playersLeft < (followerData?.followers.length || participantsRef.current.length) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-white mb-6">⏸️ Paused</p>
+                      <p className="text-gray-300 mb-6">{playersLeft} players remaining</p>
+                      <div className="flex gap-4 justify-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePause(); }}
+                          className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-bold text-lg flex items-center gap-2"
+                        >
+                          <Play size={24} /> Resume
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); reset(); }}
+                          className="bg-gray-700 hover:bg-gray-600 text-white px-8 py-4 rounded-lg font-bold text-lg flex items-center gap-2"
+                        >
+                          <RotateCcw size={24} /> Restart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Winner overlay with replay option */}
+                {winner && (
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); reset(); }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"
+                    >
+                      <RotateCcw size={20} /> New Battle
+                    </button>
+                  </div>
+                )}
+
+                {/* Progress bar at bottom - always visible during game */}
+                {isRunning && (
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <div className="w-full bg-gray-700/50 rounded-full h-2">
+                      <div
+                        className="bg-red-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${((followerData?.followers.length || playersLeft) - playersLeft) / (followerData?.followers.length || 1) * 100}%`
                         }}
                       />
                     </div>
-                    <div className="text-center text-xs text-gray-400 mt-1">
-                      {playersLeft} remaining
-                    </div>
                   </div>
-                </div>
+                )}
               </div>
               )}
             </div>
