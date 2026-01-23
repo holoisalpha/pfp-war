@@ -273,34 +273,8 @@ const BattleSimulator = () => {
             colorCtx.clip();
             colorCtx.drawImage(img, 0, 0, size, size);
             
-            // Grayscale version
-            const grayCanvas = document.createElement('canvas');
-            grayCanvas.width = size;
-            grayCanvas.height = size;
-            const grayCtx = grayCanvas.getContext('2d');
-            grayCtx.beginPath();
-            grayCtx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
-            grayCtx.clip();
-            grayCtx.drawImage(img, 0, 0, size, size);
-            // Apply grayscale
-            try {
-              const imageData = grayCtx.getImageData(0, 0, size, size);
-              const pixels = imageData.data;
-              for (let i = 0; i < pixels.length; i += 4) {
-                const gray = pixels[i] * 0.299 + pixels[i+1] * 0.587 + pixels[i+2] * 0.114;
-                pixels[i] = gray;
-                pixels[i+1] = gray;
-                pixels[i+2] = gray;
-              }
-              grayCtx.putImageData(imageData, 0, 0);
-            } catch (e) {
-              // CORS may block getImageData, use color as fallback for gray
-              console.log(`⚠️ CORS blocked grayscale for ${follower.username}, using color`);
-            }
-            
             images[follower.username] = {
               color: colorCanvas,
-              gray: grayCanvas,
               complete: true
             };
             loaded++;
@@ -2221,8 +2195,6 @@ const BattleSimulator = () => {
     } // end skipCollisions check
 
     // Draw participants - use pre-rendered circular canvases
-    // Always use color now - performance comes from pre-rendered canvases
-    const useGrayscale = false;
     const skipHealthBars = aliveCount > 500;
     const skipBorders = aliveCount > 1000;
 
@@ -2231,14 +2203,12 @@ const BattleSimulator = () => {
       const imgData = p.username ? loadedImagesRef.current[p.username] : null;
       if (imgData && imgData.complete) {
         // Use pre-rendered circular canvas (no clipping needed!)
-        const canvas = useGrayscale ? imgData.gray : imgData.color;
-        ctx.drawImage(canvas, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
-        // No border - cleaner look
+        ctx.drawImage(imgData.color, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
       } else {
         // Colored circle fallback
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = useGrayscale ? '#666' : p.color;
+        ctx.fillStyle = p.color;
         ctx.fill();
 
         if (aliveCount <= 500) {
